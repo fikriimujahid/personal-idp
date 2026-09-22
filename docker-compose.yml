@@ -1,0 +1,119 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fikri-idp-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fikri_idp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fikri_idp}
+      POSTGRES_DB: ${POSTGRES_DB:-fikri_idp}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fikri_idp}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - idp-network
+
+  localstack:
+    image: localstack/localstack:4
+    container_name: fikri-idp-localstack
+    environment:
+      SERVICES: sqs,s3,secretsmanager,dynamodb
+      DEBUG: ${LOCALSTACK_DEBUG:-0}
+      DOCKER_HOST: unix:///var/run/docker.sock
+    ports:
+      - "4566:4566"
+    volumes:
+      - localstack-data:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker/localstack/init.sh:/etc/localstack/init/ready.d/init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4566/_localstack/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - idp-network
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: dev
+    container_name: fikri-idp-api
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+      - ./apps/api/prisma:/app/apps/api/prisma
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-fikri_idp}:${POSTGRES_PASSWORD:-fikri_idp}@postgres:5432/${POSTGRES_DB:-fikri_idp}
+      AUTH_MODE: ${AUTH_MODE:-local}
+      AUTH_LOCAL_SECRET: ${AUTH_LOCAL_SECRET:-fikri-idp-dev-jwt-secret-do-not-use-in-production}
+      AUTH_LOCAL_ISSUER: ${AUTH_LOCAL_ISSUER:-fikri-idp-local}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      LOCALSTACK_ENDPOINT: http://localstack:4566
+      SQS_QUEUE_PREFIX: ${SQS_QUEUE_PREFIX:-http://localstack:4566/000000000000/}
+      TERRAFORM_STATE_BUCKET: ${TERRAFORM_STATE_BUCKET:-fikri-idp-tfstate}
+      SECRETS_PREFIX: ${SECRETS_PREFIX:-fikri-idp/dev/}
+    networks:
+      - idp-network
+
+  portal:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: dev
+    container_name: fikri-idp-portal
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/web/src:/app/apps/web/src
+      - ./apps/web/public:/app/apps/web/public
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+    networks:
+      - idp-network
+
+  worker:
+    profiles:
+      - worker
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+      target: dev
+    container_name: fikri-idp-worker
+    volumes:
+      - ./apps/worker/src:/app/apps/worker/src
+    depends_on:
+      - localstack
+    environment:
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      LOCALSTACK_ENDPOINT: http://localstack:4566
+      SQS_QUEUE_PREFIX: ${SQS_QUEUE_PREFIX:-http://localstack:4566/000000000000/}
+    networks:
+      - idp-network
+
+volumes:
+  postgres-data:
+  localstack-data:
+
+networks:
+  idp-network:
+    name: idp-network
+    driver: bridge

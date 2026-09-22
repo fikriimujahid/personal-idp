@@ -1,20 +1,56 @@
 FROM node:20-alpine AS base
+RUN corepack enable
 
+# ─── Dependencies ───────────────────────────────────────────────────────────
 FROM base AS deps
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
-RUN corepack enable && pnpm install --frozen-lockfile
 
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+COPY apps/worker/package.json ./apps/worker/
+COPY packages/types/package.json ./packages/types/
+COPY packages/sdk/package.json ./packages/sdk/
+COPY packages/ui/package.json ./packages/ui/
+
+RUN pnpm install --frozen-lockfile
+
+# ─── Builder ────────────────────────────────────────────────────────────────
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-RUN corepack enable && pnpm build
 
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/worker/node_modules ./apps/worker/node_modules
+COPY --from=deps /app/packages/types/node_modules ./packages/types/node_modules
+
+COPY tsconfig.base.json ./
+COPY packages/types/ ./packages/types/
+COPY apps/worker/ ./apps/worker/
+
+RUN pnpm --filter @fikri-idp/types build && \
+    pnpm --filter @fikri-idp/worker build
+
+# ─── Dev ────────────────────────────────────────────────────────────────────
+FROM deps AS dev
+WORKDIR /app
+
+COPY --from=builder /app/packages/types/dist ./packages/types/dist
+
+COPY tsconfig.base.json ./
+COPY apps/worker/ ./apps/worker/
+
+WORKDIR /app/apps/worker
+
+EXPOSE 3002
+CMD ["pnpm", "dev"]
+
+# ─── Runner ─────────────────────────────────────────────────────────────────
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
+
+COPY --from=builder /app/apps/worker/node_modules ./node_modules
+COPY --from=builder /app/apps/worker/dist ./dist
+
 EXPOSE 3002
 CMD ["node", "dist/main"]

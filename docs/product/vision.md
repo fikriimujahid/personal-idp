@@ -82,6 +82,15 @@ The platform abstracts away infrastructure complexity, standardizes deployment p
   - Status
   - SLI/SLO definitions
 
+### Security Baseline
+- Mandatory security controls enforced as hard gates in CI/CD
+- Security controls baked into templates (Dockerfile, CI/CD workflow, Terraform)
+- Container scanning, dependency scanning, SAST
+- Secrets management via AWS Secrets Manager
+- Non-root containers, HTTPS, IAM roles, security headers
+- CloudWatch logging and audit logging
+- See `docs/platform/security-baseline.md` for full specification
+
 ### Documentation
 - Onboarding guide for developers
 - Template usage documentation
@@ -99,7 +108,7 @@ The following capabilities are **not** part of the MVP and will not be addressed
 - **Custom infrastructure patterns** — Only standard patterns via templates
 - **Runtime debugging and profiling** — No integrated debugging tools
 - **Cost management and optimization** — No cost tracking or optimization features
-- **Security scanning and compliance** — No automated security scanning or compliance checks
+- **Advanced compliance frameworks** — No SOC 2, ISO 27001, or HIPAA compliance automation (basic security baseline is in scope; see MVP Scope)
 - **Database migration tooling** — No database schema migration automation
 - **Feature flag management** — No feature flag system integration
 - **Local development environment tooling** — No Docker Compose or similar local orchestration
@@ -118,6 +127,7 @@ A successful Fikri IDP deployment meets the following criteria:
 | Infrastructure-related tickets for new services | 80% reduction |
 | New services using standardized templates | 100% |
 | Services with monitoring configured at launch | 100% |
+| Services passing security baseline at launch | 100% |
 | Services with documented ownership | 100% |
 | Developer satisfaction (survey) | ≥ 4/5 |
 
@@ -126,6 +136,7 @@ A successful Fikri IDP deployment meets the following criteria:
 - Developers can create and deploy a new service without platform team intervention
 - Infrastructure changes are reproducible and version-controlled
 - All services follow consistent patterns and conventions
+- All services meet the security baseline at launch
 - Service health and ownership are visible to the entire organization
 - Platform maintenance burden is predictable and manageable
 
@@ -138,7 +149,7 @@ The following capabilities may be added in future iterations based on user feedb
 - Additional service templates (worker services, static sites)
 - Self-service environment provisioning
 - Advanced deployment strategies (canary, blue/green)
-- Integrated security scanning
+- Advanced compliance and policy-as-code (OPA)
 - Cost allocation and optimization
 - Multi-region deployment support
 - Enhanced service catalog with dependency mapping

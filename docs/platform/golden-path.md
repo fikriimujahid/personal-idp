@@ -184,35 +184,39 @@ The IDP scaffolds the NestJS application from the template, injecting service me
 
 ### Step 8: Generate Docker Configuration
 
-The IDP generates Dockerfile and .dockerignore, committed to the repository.
+The IDP generates Dockerfile and .dockerignore, committed to the repository. The Dockerfile enforces mandatory container security controls from the [security baseline](security-baseline.md).
 
 | | |
 |---|---|
 | **Input** | Service metadata (port, application type) |
-| **Output** | Dockerfile (multi-stage build) and .dockerignore committed to repository |
+| **Output** | Dockerfile (multi-stage build, non-root user, minimal base image) and .dockerignore committed to repository |
 | **Failure** | Git push failure, template rendering error |
 | **Retry** | Automatic retry (3 attempts); idempotent |
 | **Manual Intervention** | None |
+
+**Security controls embedded:** Non-root user, multi-stage build, minimal base image, no unnecessary packages in final image.
 
 ---
 
 ### Step 9: Generate CI/CD
 
-The IDP generates GitHub Actions workflow files for lint, test, build, push to ECR, and deploy to ECS.
+The IDP generates GitHub Actions workflow files for lint, test, build, push to ECR, and deploy to ECS. The pipeline includes security gates that enforce the [security baseline](security-baseline.md).
 
 | | |
 |---|---|
 | **Input** | Service metadata, environment configuration (staging) |
-| **Output** | `.github/workflows/` directory with CI/CD pipeline committed to repository |
+| **Output** | `.github/workflows/` directory with CI/CD pipeline committed to repository, including security gates |
 | **Failure** | Git push failure, workflow template rendering error |
 | **Retry** | Automatic retry (3 attempts); idempotent |
 | **Manual Intervention** | Platform Administrator if CI/CD template is misconfigured |
+
+**Security gates embedded:** Secret scanning, dependency audit, SAST, container scan validation, IAM policy validation. Deployment is blocked if any gate fails.
 
 ---
 
 ### Step 10: Generate Terraform
 
-The IDP generates per-service Terraform configuration using reusable modules.
+The IDP generates per-service Terraform configuration using reusable modules. The Terraform configuration enforces mandatory infrastructure security controls from the [security baseline](security-baseline.md).
 
 | | |
 |---|---|
@@ -221,6 +225,8 @@ The IDP generates per-service Terraform configuration using reusable modules.
 | **Failure** | Terraform template rendering error, Git push failure |
 | **Retry** | Automatic retry (3 attempts); idempotent |
 | **Manual Intervention** | Platform Administrator if Terraform modules are misconfigured |
+
+**Security controls embedded:** Per-service IAM roles (least privilege), HTTPS listener with TLS, CloudWatch log group with retention policy, ECR scan-on-push, ECS security context (non-root, read-only filesystem).
 
 ---
 

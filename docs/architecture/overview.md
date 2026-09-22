@@ -326,13 +326,42 @@ The IDP abstracts all AWS complexity, enabling developers to focus on business l
 
 ---
 
+## Security Baseline
+
+### Cross-Cutting Concern
+
+The security baseline defines mandatory security controls for all services managed by the IDP. It is a cross-cutting concern that applies to golden-path-generated services and the IDP's own components (Portal, API, Worker).
+
+**Enforcement model:** Hard gate. Mandatory controls block deployment.
+
+### Control Areas
+
+| Control | Enforcement Point |
+|---------|-------------------|
+| HTTPS / TLS | ALB configuration (Terraform) |
+| IAM roles | Per-service task and execution roles (Terraform) |
+| Secrets management | AWS Secrets Manager; secret scanning in CI/CD |
+| Container security | Non-root, multi-stage, minimal base (Dockerfile template) |
+| Container scanning | ECR scan-on-push; CI/CD gate blocks on HIGH/CRITICAL |
+| Dependency scanning | `npm audit` in CI/CD pipeline |
+| SAST | CodeQL / Trivy in CI/CD pipeline |
+| Security headers | Middleware in application scaffold |
+| CloudWatch logging | Log group and log driver (Terraform) |
+| Audit logging | Audit middleware in application scaffold |
+
+**Full specification:** See `docs/platform/security-baseline.md`
+
+**Decision record:** See [ADR-012](../adr/012-security-baseline.md)
+
+---
+
 ## Alignment with Product Documentation
 
 | Document | Alignment |
 |----------|-----------|
-| `vision.md` | Architecture supports all MVP scope items: templates, repository management, infrastructure provisioning, CI/CD, observability, service catalog |
+| `vision.md` | Architecture supports all MVP scope items: templates, repository management, infrastructure provisioning, CI/CD, observability, security baseline, service catalog |
 | `personas.md` | Authentication boundary enforces persona permissions. Role-based access control maps to Platform Admin, Developer, Service Owner, Viewer |
-| `golden-path.md` | Component architecture supports all 16 steps of the golden path. Worker handles async steps (provisioning, deployment, health check, monitoring) |
+| `golden-path.md` | Component architecture supports all 16 steps of the golden path. Steps 8, 9, 10 embed security baseline controls. Worker handles async steps (provisioning, deployment, health check, monitoring) |
 | `service-lifecycle.md` | PostgreSQL stores the service lifecycle state machine. State transitions are enforced by the API/Worker |
 
 ---
@@ -346,3 +375,4 @@ The following architectural additions are planned for future iterations:
 - **SLO tracking** — Platform-level SLOs for the IDP's own reliability
 - **Audit system** — Comprehensive audit log of all platform actions
 - **Acceptance testing** — Automated validation that services meet quality gates before promotion
+- **Advanced policy-as-code** — OPA or similar for complex policy enforcement beyond CI/CD gates

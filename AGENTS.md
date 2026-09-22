@@ -12,11 +12,12 @@ Before acting on any prompt or request, always read the following product docume
 2. `docs/product/personas.md` — User types, responsibilities, permissions, and relationships
 3. `docs/platform/golden-path.md` — Standard workflow for creating a new backend service through the IDP
 4. `docs/platform/service-lifecycle.md` — Service lifecycle states, transitions, failure handling, and decommissioning
-5. `docs/architecture/overview.md` — High-level component architecture, boundaries, and responsibilities
-6. `docs/architecture/technology-stack.md` — Technology choices, rationale, and component mapping
-7. `docs/architecture/repository-structure.md` — Monorepo layout, workspace packages, directory conventions
-8. `docs/architecture/environments.md` — Environment definitions, isolation strategy, configuration, secrets, and state management
-9. `docs/adr/` — Architecture Decision Records for all major technology choices
+5. `docs/platform/security-baseline.md` — Mandatory and optional security controls for all services, CI/CD gates, and enforcement model
+6. `docs/architecture/overview.md` — High-level component architecture, boundaries, and responsibilities
+7. `docs/architecture/technology-stack.md` — Technology choices, rationale, and component mapping
+8. `docs/architecture/repository-structure.md` — Monorepo layout, workspace packages, directory conventions
+9. `docs/architecture/environments.md` — Environment definitions, isolation strategy, configuration, secrets, and state management
+10. `docs/adr/` — Architecture Decision Records for all major technology choices
 
 All work must align with the platform's purpose, MVP scope, target users, and success criteria defined in those documents. If a request conflicts with the vision or personas, raise it before proceeding.
 

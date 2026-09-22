@@ -14,7 +14,8 @@ Before acting on any prompt or request, always read the following product docume
 4. `docs/platform/service-lifecycle.md` — Service lifecycle states, transitions, failure handling, and decommissioning
 5. `docs/architecture/overview.md` — High-level component architecture, boundaries, and responsibilities
 6. `docs/architecture/technology-stack.md` — Technology choices, rationale, and component mapping
-7. `docs/adr/` — Architecture Decision Records for all major technology choices
+7. `docs/architecture/repository-structure.md` — Monorepo layout, workspace packages, directory conventions
+8. `docs/adr/` — Architecture Decision Records for all major technology choices
 
 All work must align with the platform's purpose, MVP scope, target users, and success criteria defined in those documents. If a request conflicts with the vision or personas, raise it before proceeding.
 
@@ -115,11 +116,45 @@ If adding a dependency:
 
 ---
 
+# Monorepo Structure
+
+This is a pnpm workspace monorepo. See `docs/architecture/repository-structure.md` and `docs/adr/011-monorepo-structure.md` for the full specification.
+
+| Directory | Purpose | Workspace Member |
+|-----------|---------|-----------------|
+| `apps/web/` | IDP Portal (Next.js) | Yes |
+| `apps/api/` | IDP API (NestJS) | Yes |
+| `apps/worker/` | IDP Worker (NestJS, post-MVP) | Yes |
+| `packages/types/` | Shared API contract types (DTOs, enums) | Yes |
+| `packages/sdk/` | Typed API client (Portal → API) | Yes |
+| `packages/ui/` | Shared React UI components | Yes |
+| `templates/` | Service scaffolding templates | No |
+| `infrastructure/` | Platform Terraform | No |
+
+### Dependency Rules
+
+- Applications may depend on packages. Packages must not depend on applications.
+- Cross-app dependencies are not allowed. Applications communicate only via REST API.
+- `packages/types/` has no runtime dependencies — types and interfaces only.
+- `packages/sdk/` depends on `packages/types/`.
+- `packages/ui/` has React as a peer dependency only.
+
+### Workspace Commands
+
+- `pnpm build` — Build all workspace packages
+- `pnpm lint` — Lint all workspace packages
+- `pnpm typecheck` — Type-check all workspace packages
+- `pnpm test` — Run tests across all workspace packages
+
+---
+
 # Frontend Guidelines
 
-When working in the admin repository:
+When working in `apps/web/`:
 
-- reuse shared UI components
+- reuse shared UI components from `packages/ui/`
+- use the typed API client from `packages/sdk/` for all API calls
+- use contract types from `packages/types/` for request/response shapes
 - maintain consistent spacing
 - maintain consistent styling
 - support responsive layouts
@@ -142,14 +177,17 @@ When working in the API repository:
 - use consistent response structures
 - isolate feature modules
 - avoid leaking implementation details
+- use contract types from `packages/types/` for request/response shapes
 
 The API is the **only** client that integrates directly with Amazon Cognito. All authentication flows (login, token exchange, refresh) are handled by the API using the confidential client secret stored in AWS Secrets Manager.
+
+The Prisma schema lives in `apps/api/prisma/schema.prisma`. The API is the sole writer to PostgreSQL.
 
 ---
 
 # Infrastructure Guidelines
 
-When working in the infrastructure repository:
+When working in the `infrastructure/` directory:
 
 - infrastructure must be reproducible
 - infrastructure should be declarative

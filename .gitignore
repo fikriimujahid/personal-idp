@@ -1,1 +1,15 @@
 .agents/*
+
+node_modules
+dist
+.next
+.turbo
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+.terraform
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfplan

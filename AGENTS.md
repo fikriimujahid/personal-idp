@@ -4,11 +4,14 @@ This document provides instructions for AI coding assistants (such as OpenCode, 
 
 ---
 
-# Product Vision
+# Product Documentation
 
-Before acting on any prompt or request, always read `docs/product/vision.md` first.
+Before acting on any prompt or request, always read the following product documents first:
 
-All work must align with the platform's purpose, MVP scope, target users, and success criteria defined in that document. If a request conflicts with the vision, raise it before proceeding.
+1. `docs/product/vision.md` — Platform purpose, MVP scope, target users, and success criteria
+2. `docs/product/personas.md` — User types, responsibilities, permissions, and relationships
+
+All work must align with the platform's purpose, MVP scope, target users, and success criteria defined in those documents. If a request conflicts with the vision or personas, raise it before proceeding.
 
 ---
 

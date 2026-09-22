@@ -21,66 +21,89 @@ The platform abstracts away infrastructure complexity, standardizes deployment p
 
 ## Primary Use Cases
 
-1. **Service scaffolding** — Developer creates a new service from a standardized template (NestJS API or React admin frontend)
-2. **Repository creation** — Repository is automatically created with correct structure, conventions, and configuration
-3. **Infrastructure provisioning** — ECS Fargate infrastructure is provisioned via reusable Terraform modules
-4. **CI/CD configuration** — GitHub Actions pipeline is automatically configured for lint, test, build, and deploy
-5. **Deployment** — Service is deployed through local → staging → production environments
-6. **Monitoring** — Prometheus metrics endpoint and Grafana dashboards are attached automatically
-7. **SLI/SLO** — Service-level indicators and objectives are generated (request latency, error rate, availability)
-8. **Service ownership** — Ownership is recorded in a markdown-based service catalog
+1. **Authentication** — Developer authenticates with the IDP via Amazon Cognito through the API
+2. **User management** — Platform administrators manage user accounts and assign roles
+3. **Service scaffolding** — Developer creates a new service from a standardized template (NestJS API or React admin frontend)
+4. **Repository creation** — Repository is automatically created with correct structure, conventions, and configuration
+5. **Infrastructure provisioning** — ECS Fargate infrastructure is provisioned via reusable Terraform modules
+6. **CI/CD configuration** — GitHub Actions pipeline is automatically configured for lint, test, build, and deploy
+7. **Deployment** — Service is deployed through local → staging → production environments
+8. **Service health** — CloudWatch logs, ECS task health, ALB health checks, and basic CPU/memory metrics are visible
+9. **Service ownership** — Ownership is recorded in a PostgreSQL-backed service catalog
+
+**See [roadmap.md](roadmap.md) for the complete V1 feature list and completion criteria.**
 
 ---
 
-## MVP Scope
+## MVP Scope (V1)
 
-### Templates
+V1 delivers a working Internal Developer Platform that enables developers to create, deploy, and monitor services on AWS ECS Fargate with zero infrastructure knowledge.
+
+**See [roadmap.md](roadmap.md) for the detailed feature list, acceptance criteria, and completion criteria.**
+
+### Authentication & User Management
+- Login flow via Amazon Cognito (confidential client through API)
+- JWT session management (access token, refresh token)
+- User account creation and management
+- Role-based access control: Platform Administrator, Developer, Service Owner, Viewer
+- Frontend never directly accesses Cognito
+
+### Service Catalog
+- PostgreSQL-backed service registry
+- Metadata per service: owner, repository URL, service URL, status, template type
+- Service search and filtering
+- Ownership tracking
+
+### Service Creation
+- Golden path workflow (metadata → repo → scaffold → provision → deploy → healthy)
+- Lifecycle state machine (REQUESTED → CREATING → PROVISIONING → DEPLOYING → ACTIVE → FAILED)
+- Step-by-step progress indication
+- Failure handling with retry capability
+
+### Service Templates
 - NestJS API service template
 - React admin frontend template
+- Template registry stored in PostgreSQL
 
-### Repository Management
+### GitHub Integration
 - Automated repository creation via GitHub API
-- Standardized project structure and conventions
+- Automated commits of generated artifacts (application scaffold, Dockerfile, CI/CD, Terraform)
+- GitHub credentials stored in AWS Secrets Manager
 
 ### Infrastructure
 - ECS Fargate on AWS
 - Reusable Terraform modules for:
-  - VPC and networking
-  - Application Load Balancer
-  - ECS cluster and task definitions
-  - Service discovery
-  - ECR repositories
+  - ECR repositories (per service)
+  - ECS task definitions and services (per service)
+  - Application Load Balancer listener rules (per service)
+  - Service discovery entries (per service)
+  - IAM task and execution roles (per service)
+  - CloudWatch log groups (per service)
+- Terraform state management (S3 + DynamoDB locking)
 
 ### CI/CD
-- GitHub Actions workflows
+- GitHub Actions workflows (per service)
 - Automated pipelines for:
   - Linting and type checking
   - Unit and integration tests
   - Docker image build
   - Push to Amazon ECR
   - Deploy to ECS Fargate
+- Security gates integrated into pipeline
 
-### Environments
-- Local development
-- Staging
-- Production
+### Deployment Status
+- Lifecycle state display (REQUESTED, CREATING, PROVISIONING, DEPLOYING, ACTIVE, FAILED)
+- Failure details and error messages
+- Retry capability for failed services
+- Deployment history per service
 
-### Observability
-- Prometheus metrics endpoint per service
-- Grafana dashboards automatically configured
-- SLI/SLO metrics:
-  - Request latency (p50, p95, p99)
-  - Error rate (5xx responses)
-  - Availability (uptime percentage)
-
-### Service Catalog
-- Markdown-based registry
-- Metadata per service:
-  - Owner
-  - Repository URL
-  - Service URL
-  - Status
-  - SLI/SLO definitions
+### Basic Operational Visibility
+- CloudWatch Logs (per-service log groups, structured JSON, retention ≥ 30 days)
+- ECS task/service health status
+- ALB health check status
+- Basic CPU and memory utilisation metrics
+- Deployment status (in progress, succeeded, failed)
+- Basic uptime / availability status
 
 ### Security Baseline
 - Mandatory security controls enforced as hard gates in CI/CD
@@ -91,6 +114,11 @@ The platform abstracts away infrastructure complexity, standardizes deployment p
 - CloudWatch logging and audit logging
 - See `docs/platform/security-baseline.md` for full specification
 
+### Environments
+- Local development
+- Staging
+- Production
+
 ### Documentation
 - Onboarding guide for developers
 - Template usage documentation
@@ -99,21 +127,28 @@ The platform abstracts away infrastructure complexity, standardizes deployment p
 
 ---
 
-## Explicitly Out of Scope
+## Explicitly Out of Scope (V1 Exclusions)
 
-The following capabilities are **not** part of the MVP and will not be addressed in the initial release:
+The following capabilities are **not** part of V1 and will not be addressed in the initial release. See [roadmap.md](roadmap.md) for the complete exclusion list and rationale.
 
+- **Kubernetes / EKS** — V1 uses ECS Fargate exclusively
 - **Multi-cloud support** — AWS only
-- **Non-ECS compute** — Lambda, EC2, EKS not supported
-- **Custom infrastructure patterns** — Only standard patterns via templates
-- **Runtime debugging and profiling** — No integrated debugging tools
-- **Cost management and optimization** — No cost tracking or optimization features
-- **Advanced compliance frameworks** — No SOC 2, ISO 27001, or HIPAA compliance automation (basic security baseline is in scope; see MVP Scope)
-- **Database migration tooling** — No database schema migration automation
-- **Feature flag management** — No feature flag system integration
-- **Local development environment tooling** — No Docker Compose or similar local orchestration
+- **Complex FinOps / cost management** — No cost tracking or optimisation features
+- **AI infrastructure provisioning** — No GPU workloads or AI/ML service support
 - **Multi-region deployment** — Single-region deployment only
-- **Advanced deployment strategies** — No blue/green, canary, or rolling deployments beyond basic ECS rolling updates
+- **Advanced incident management** — No PagerDuty/Opsgenie-style incident management
+- **Full Backstage replacement** — Custom Next.js portal in V1
+- **Prometheus / Grafana** — V1 uses CloudWatch for observability
+- **SLI / SLO tracking** — V1 has basic health metrics only
+- **IDP Worker (async SQS)** — V1 API handles operations synchronously
+- **Advanced deployment strategies** — No blue/green, canary deployments beyond basic ECS rolling updates
+- **Database provisioning for services** — No automated database setup for managed services
+- **Feature flag management** — No feature flag system integration
+- **Runtime debugging and profiling** — No integrated debugging tools
+- **Advanced compliance frameworks** — No SOC 2, ISO 27001, or HIPAA compliance automation (basic security baseline is in scope)
+- **Database migration tooling** — No database schema migration automation
+- **Local development environment tooling** — No Docker Compose or similar local orchestration
+- **Custom infrastructure patterns** — Only standard patterns via templates
 
 ---
 
@@ -142,14 +177,23 @@ A successful Fikri IDP deployment meets the following criteria:
 
 ---
 
-## Future Considerations
+## Future Considerations (V2+)
 
-The following capabilities may be added in future iterations based on user feedback and organizational needs:
+The following capabilities may be added in future iterations based on user feedback and organizational needs. See [roadmap.md](roadmap.md) for the full backlog.
 
-- Additional service templates (worker services, static sites)
-- Self-service environment provisioning
+- Prometheus / Grafana observability (centralised metrics, dashboards, alerting)
+- SLI / SLO tracking (formal service-level indicators and objectives)
+- IDP Worker (extract async processing from API to dedicated NestJS Worker via SQS)
 - Advanced deployment strategies (canary, blue/green)
-- Advanced compliance and policy-as-code (OPA)
-- Cost allocation and optimization
+- Database provisioning for services (automated RDS / DynamoDB)
+- Additional service templates (worker services, static sites, CLI tools)
+- Self-service environment provisioning (developer-requested staging/preview environments)
+- Backstage evaluation (as portal replacement or integration)
+- Feature flag management (LaunchDarkly, Unleash, or similar)
+- Cost allocation and optimisation (per-service cost tracking, budget alerts)
 - Multi-region deployment support
+- Advanced compliance and policy-as-code (OPA)
 - Enhanced service catalog with dependency mapping
+- Advanced incident management (PagerDuty / Opsgenie integration, on-call rotation)
+- Runtime debugging and profiling
+- Local development tooling (Docker Compose or similar)

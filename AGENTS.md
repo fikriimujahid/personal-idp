@@ -9,15 +9,16 @@ This document provides instructions for AI coding assistants (such as OpenCode, 
 Before acting on any prompt or request, always read the following product documents first:
 
 1. `docs/product/vision.md` — Platform purpose, MVP scope, target users, and success criteria
-2. `docs/product/personas.md` — User types, responsibilities, permissions, and relationships
-3. `docs/platform/golden-path.md` — Standard workflow for creating a new backend service through the IDP
-4. `docs/platform/service-lifecycle.md` — Service lifecycle states, transitions, failure handling, and decommissioning
-5. `docs/platform/security-baseline.md` — Mandatory and optional security controls for all services, CI/CD gates, and enforcement model
-6. `docs/architecture/overview.md` — High-level component architecture, boundaries, and responsibilities
-7. `docs/architecture/technology-stack.md` — Technology choices, rationale, and component mapping
-8. `docs/architecture/repository-structure.md` — Monorepo layout, workspace packages, directory conventions
-9. `docs/architecture/environments.md` — Environment definitions, isolation strategy, configuration, secrets, and state management
-10. `docs/adr/` — Architecture Decision Records for all major technology choices
+2. `docs/product/roadmap.md` — V1 feature scope, explicit exclusions, future backlog, and MVP completion criteria
+3. `docs/product/personas.md` — User types, responsibilities, permissions, and relationships
+4. `docs/platform/golden-path.md` — Standard workflow for creating a new backend service through the IDP
+5. `docs/platform/service-lifecycle.md` — Service lifecycle states, transitions, failure handling, and decommissioning
+6. `docs/platform/security-baseline.md` — Mandatory and optional security controls for all services, CI/CD gates, and enforcement model
+7. `docs/architecture/overview.md` — High-level component architecture, boundaries, and responsibilities
+8. `docs/architecture/technology-stack.md` — Technology choices, rationale, and component mapping
+9. `docs/architecture/repository-structure.md` — Monorepo layout, workspace packages, directory conventions
+10. `docs/architecture/environments.md` — Environment definitions, isolation strategy, configuration, secrets, and state management
+11. `docs/adr/` — Architecture Decision Records for all major technology choices
 
 All work must align with the platform's purpose, MVP scope, target users, and success criteria defined in those documents. If a request conflicts with the vision or personas, raise it before proceeding.
 

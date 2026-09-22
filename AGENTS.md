@@ -15,7 +15,8 @@ Before acting on any prompt or request, always read the following product docume
 5. `docs/architecture/overview.md` — High-level component architecture, boundaries, and responsibilities
 6. `docs/architecture/technology-stack.md` — Technology choices, rationale, and component mapping
 7. `docs/architecture/repository-structure.md` — Monorepo layout, workspace packages, directory conventions
-8. `docs/adr/` — Architecture Decision Records for all major technology choices
+8. `docs/architecture/environments.md` — Environment definitions, isolation strategy, configuration, secrets, and state management
+9. `docs/adr/` — Architecture Decision Records for all major technology choices
 
 All work must align with the platform's purpose, MVP scope, target users, and success criteria defined in those documents. If a request conflicts with the vision or personas, raise it before proceeding.
 

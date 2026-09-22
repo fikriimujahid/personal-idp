@@ -45,7 +45,7 @@ Backend and frontend developers who use the platform to create and deploy servic
 **Responsibilities**
 
 - Creating new services from templates
-- Deploying applications through environments (local → staging → production)
+- Deploying applications through environments (local → production)
 - Viewing service logs and health metrics
 - Following deployment runbooks and troubleshooting guides
 - Adhering to platform conventions and standards
@@ -53,7 +53,7 @@ Backend and frontend developers who use the platform to create and deploy servic
 **Permissions**
 
 - Create new services from approved templates
-- Trigger deployments to all environments
+- Trigger deployments to production
 - View logs, health metrics, and monitoring dashboards for all services
 - Access documentation and deployment runbooks
 - View service catalog entries

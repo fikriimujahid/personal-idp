@@ -52,7 +52,7 @@ fikri-idp/
 | `packages/sdk/` | Yes | No | Typed HTTP client for Portal → API communication. Depends on `packages/types/` |
 | `packages/ui/` | Yes | No | Shared React components. Peer-depends on React |
 | `templates/` | No | No | Standalone project generators for golden path |
-| `infrastructure/` | No | No | Terraform modules and environment configs |
+| `infrastructure/` | No | No | Terraform modules and configuration |
 
 ### Dependency Graph
 

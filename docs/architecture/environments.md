@@ -2,17 +2,15 @@
 
 ## Overview
 
-Fikri IDP uses a three-environment strategy to promote services from development to production. Each environment serves a distinct purpose in the service lifecycle.
+Fikri IDP uses a two-environment strategy: Local for development and a single Production environment on AWS. The Production environment is **inactive by default** to minimise cost. All resources are activated on demand via Terraform configuration.
 
 ```
 Local
   ↓
-Staging
-  ↓
-Production
+Production (inactive by default)
 ```
 
-Services progress through environments via the golden path workflow. Each environment provides increasing levels of fidelity to production conditions.
+Services progress through environments via the golden path workflow. Local development uses Docker Compose with LocalStack at zero cost. Production runs on real AWS infrastructure in `ap-southeast-1` (Singapore) and is only active when explicitly enabled.
 
 ---
 
@@ -32,18 +30,6 @@ Services progress through environments via the golden path workflow. Each enviro
 
 **See:** [Local Development Environment](local-development.md)
 
-### Staging
-
-**Purpose:** Pre-production testing environment for validating services before production deployment.
-
-**Characteristics:**
-- Runs on real AWS infrastructure in `ap-southeast-1` (Singapore)
-- Uses actual AWS services (ECS Fargate, RDS, Cognito, etc.)
-- Mirrors production architecture with reduced scale
-- Used for integration testing, acceptance testing, and validation
-- Accessible to developers and QA for testing
-- Data is isolated from production
-
 ### Production
 
 **Purpose:** Live environment serving end users.
@@ -51,133 +37,166 @@ Services progress through environments via the golden path workflow. Each enviro
 **Characteristics:**
 - Runs on real AWS infrastructure in `ap-southeast-1` (Singapore)
 - Uses actual AWS services with production-grade configuration
-- Full scale and redundancy
-- Restricted access (platform administrators only)
+- **Inactive by default** — all ECS tasks have `desired_count = 0` and RDS is stopped when not in use
+- Activated via Terraform variable `enabled = true`
+- Domain: `idp.fikri.dev`
+- Restricted access (platform administrator only)
 - Real user data and traffic
-- Highest availability and performance requirements
+
+---
+
+## Inactive by Default
+
+The Production environment is designed to minimise AWS cost when not actively in use. By default, no compute resources are running.
+
+### Default State
+
+| Resource | Default State | Cost When Inactive |
+|----------|--------------|-------------------|
+| **ECS Fargate tasks** | `desired_count = 0` | $0.00 |
+| **RDS PostgreSQL** | Serverless v2, scaled to 0 ACU | $0.00 |
+| **ALB** | Running (shared infrastructure) | ~$16.50/mo |
+| **Cognito** | Active (managed service) | $0.00 (< 50K MAUs) |
+| **ECR** | Active (container storage) | ~$0.10/mo |
+| **Secrets Manager** | Active (secrets stored) | ~$1.20/mo |
+| **CloudWatch** | Active (log groups exist) | ~$0.50/mo |
+| **S3 + DynamoDB** | Active (Terraform state) | ~$0.35/mo |
+| **Service Discovery** | Active (namespace exists) | ~$0.50/mo |
+
+**Total inactive cost: ~$19-22/month (~$0.65-0.73/day)**
+
+### Activating Resources
+
+All compute resources are controlled by a single Terraform variable:
+
+```hcl
+variable "enabled" {
+  description = "Whether compute resources are active. Set to true to start all services."
+  type        = bool
+  default     = false
+}
+```
+
+When `enabled = false`:
+- All ECS services have `desired_count = 0`
+- RDS Serverless v2 scales to 0 ACU (paused)
+- ALB remains running (required for routing when activated)
+
+When `enabled = true`:
+- ECS services scale to their configured `desired_count`
+- RDS Serverless v2 scales up to handle traffic
+- All services become accessible via the ALB
+
+### Per-Service Activation
+
+Services created through the golden path also default to inactive:
+
+```hcl
+variable "service_enabled" {
+  description = "Whether this service is active."
+  type        = bool
+  default     = false
+}
+```
+
+Each service's ECS `desired_count` is controlled by this variable. The service infrastructure (ECR, task definition, ALB rules, IAM roles) is always provisioned, but no tasks run until the service is activated.
+
+**Total per active service: ~$15-20/month (~$0.50-0.67/day)**
+
+---
+
+## Cost-Optimised Configuration
+
+All resources use the smallest practical configuration to minimise cost for a single-user platform.
+
+### Compute
+
+| Component | Configuration | Notes |
+|-----------|--------------|-------|
+| **IDP Portal** | 0.25 vCPU, 0.5 GB memory | Minimum Fargate size |
+| **IDP API** | 0.25 vCPU, 0.5 GB memory | Minimum Fargate size |
+| **IDP Worker** | 0.25 vCPU, 0.5 GB memory | Minimum Fargate size |
+| **Golden-path services** | 0.25 vCPU, 0.5 GB memory | Minimum Fargate size |
+| **Task count** | 1 (when active) | No redundancy needed for single user |
+
+### Database
+
+| Component | Configuration | Notes |
+|-----------|--------------|-------|
+| **RDS Engine** | PostgreSQL Serverless v2 | Scales to 0 ACU when inactive |
+| **Min ACU** | 0 | Fully paused when `enabled = false` |
+| **Max ACU** | 2 | Sufficient for single-user workload |
+| **Storage** | 20 GB GP3 | Minimum practical size |
+| **Multi-AZ** | Disabled | Single-user, cost optimisation |
+
+### Networking
+
+| Component | Configuration | Notes |
+|-----------|--------------|-------|
+| **ALB** | Single shared ALB | Path-based routing for all services |
+| **VPC** | Single VPC | 2 private subnets, 2 public subnets |
+| **NAT Gateway** | Single NAT Gateway | Shared across all services |
+| **Service Discovery** | Cloud Map namespace | DNS-based service-to-service communication |
+
+### Other Services
+
+| Component | Configuration | Notes |
+|-----------|--------------|-------|
+| **Cognito** | Single user pool | Free tier (< 50K MAUs) |
+| **ECR** | Scan-on-push enabled | Minimal storage |
+| **Secrets Manager** | 3-4 secrets | Cognito secret, DB credentials, GitHub token |
+| **CloudWatch** | 14-day retention | Reduced from 30 days for cost |
+| **S3** | Terraform state bucket | Versioning enabled |
+| **DynamoDB** | State locking table | On-demand pricing |
 
 ---
 
 ## What Changes Between Environments
 
-| Aspect | Local | Staging | Production |
-|--------|-------|---------|------------|
-| **AWS Account** | N/A (LocalStack) | Shared account | Shared account |
-| **AWS Region** | N/A | `ap-southeast-1` | `ap-southeast-1` |
-| **Compute** | Docker containers | ECS Fargate | ECS Fargate |
-| **Database** | PostgreSQL container | Amazon RDS | Amazon RDS |
-| **Authentication** | Local JWT module | Amazon Cognito | Amazon Cognito |
-| **Domain** | `localhost` | `staging.idp.fikri.dev` | `idp.fikri.dev` |
-| **Instance Sizes** | N/A (local) | Small (e.g., `t3.small` equivalent) | Production-grade |
-| **Scaling** | Single instance | Minimal (1-2 tasks) | Auto-scaled |
-| **Secrets** | `.env` file | AWS Secrets Manager | AWS Secrets Manager |
-| **State Backend** | LocalStack S3 | Real S3 (staging prefix) | Real S3 (production prefix) |
-| **Monitoring** | Docker logs | CloudWatch | CloudWatch, Prometheus, Grafana |
-| **Data** | Mock/test data | Test data | Real user data |
-| **Access** | Developers | Developers, QA | Platform admins |
+| Aspect | Local | Production |
+|--------|-------|------------|
+| **AWS Account** | N/A (LocalStack) | Single account |
+| **AWS Region** | N/A | `ap-southeast-1` |
+| **Compute** | Docker containers | ECS Fargate (inactive by default) |
+| **Database** | PostgreSQL container | RDS Serverless v2 (scales to 0) |
+| **Authentication** | Local JWT module | Amazon Cognito |
+| **Domain** | `localhost` | `idp.fikri.dev` |
+| **Instance Sizes** | N/A (local) | Minimum Fargate (0.25 vCPU, 0.5 GB) |
+| **Scaling** | Single instance | 1 task (when active) |
+| **Secrets** | `.env` file | AWS Secrets Manager |
+| **State Backend** | LocalStack S3 | Real S3 |
+| **Monitoring** | Docker logs | CloudWatch |
+| **Data** | Mock/test data | Real user data |
+| **Access** | Developers | Platform admin |
 
 ---
 
-## Environment Isolation Strategy
+## Resource Naming Convention
 
-### Initial Approach: Single AWS Account
-
-The platform starts with a single AWS account containing all environments. Isolation is achieved through resource separation within the account.
-
-**Isolation Mechanisms:**
-
-| Resource | Staging | Production |
-|----------|---------|------------|
-| **VPC** | `staging-vpc` | `production-vpc` |
-| **ECS Cluster** | `staging-cluster` | `production-cluster` |
-| **RDS Instance** | `staging-db` | `production-db` |
-| **Cognito User Pool** | `staging-user-pool` | `production-user-pool` |
-| **ALB** | `staging-alb` | `production-alb` |
-| **Service Discovery Namespace** | `staging.local` | `production.local` |
-
-**Naming Convention:**
-
-All resources follow the pattern: `{environment}-{service}-{component}`
+All resources follow the pattern: `{service}-{component}`
 
 Examples:
-- `staging-api-cluster`
-- `production-api-cluster`
-- `staging-rds-instance`
-- `production-rds-instance`
+- `idp-vpc`
+- `idp-cluster`
+- `idp-alb`
+- `idp-rds`
+- `idp-user-pool`
 
-**Tagging Strategy:**
+Per-service resources (created by golden path):
+- `{service-name}-ecr`
+- `{service-name}-task-definition`
+- `{service-name}-service`
+- `{service-name}-log-group`
+
+### Tagging Strategy
 
 All AWS resources are tagged with:
 
 | Tag | Purpose | Example |
 |-----|---------|---------|
-| `Environment` | Environment name | `staging`, `production` |
 | `Service` | Service name | `api`, `portal`, `worker` |
 | `ManagedBy` | Management tool | `terraform` |
 | `Project` | Project identifier | `fikri-idp` |
-
-**Benefits:**
-- Lower cost (single account)
-- Simpler IAM management
-- Easier resource sharing if needed
-- Reduced operational overhead
-
-**Risks:**
-- No hard isolation boundary between environments
-- Accidental cross-environment access possible
-- Blast radius includes all environments
-
-### Future Evolution: Separate AWS Accounts
-
-As the platform matures, environments may be separated into distinct AWS accounts for stronger isolation.
-
-**Account Structure:**
-
-| Account | Environments | Purpose |
-|---------|--------------|---------|
-| `fikri-idp-dev` | Local, Staging | Development and testing |
-| `fikri-idp-prod` | Production | Live environment |
-
-**Migration Path:**
-
-The directory-based Terraform structure already supports this evolution:
-
-```
-infrastructure/
-├── modules/
-└── environments/
-    ├── staging/       # Can point to dev account
-    └── production/    # Can point to prod account
-```
-
-Each environment directory will have its own provider configuration:
-
-```hcl
-# environments/staging/provider.tf
-provider "aws" {
-  region  = "ap-southeast-1"
-  profile = "fikri-idp-dev"
-}
-
-# environments/production/provider.tf
-provider "aws" {
-  region  = "ap-southeast-1"
-  profile = "fikri-idp-prod"
-}
-```
-
-**Benefits:**
-- Hard isolation boundary between environments
-- Separate billing and cost allocation
-- Reduced blast radius
-- Compliance and audit benefits
-- Separate IAM permissions per account
-
-**When to Migrate:**
-- Regulatory or compliance requirements demand it
-- Team size and complexity justify separate accounts
-- Risk tolerance requires stronger isolation
-- Cost allocation becomes critical
 
 ---
 
@@ -185,7 +204,7 @@ provider "aws" {
 
 ### Approach: Directory-Based Isolation
 
-Each environment has its own directory containing environment-specific Terraform configuration. This provides clear separation and makes it explicit which configuration applies to which environment.
+A single Terraform configuration manages the Production environment. Environment-specific values are controlled through Terraform variables.
 
 **Structure:**
 
@@ -198,38 +217,22 @@ infrastructure/
 │   ├── rds/
 │   ├── cognito/
 │   └── service-discovery/
-├── environments/
-│   ├── staging/
-│   │   ├── main.tf            # Calls modules with staging values
-│   │   ├── variables.tf       # Environment-specific variables
-│   │   ├── outputs.tf
-│   │   ├── terraform.tfvars   # Staging-specific values
-│   │   └── backend.tf         # S3 backend with staging key prefix
-│   └── production/
-│       ├── main.tf
-│       ├── variables.tf
-│       ├── outputs.tf
-│       ├── terraform.tfvars   # Production-specific values
-│       └── backend.tf         # S3 backend with production key prefix
+└── environments/
+    └── default/
+        ├── main.tf            # Calls modules with production values
+        ├── variables.tf       # Configuration variables (including enabled)
+        ├── outputs.tf
+        ├── terraform.tfvars   # Concrete values
+        └── backend.tf         # S3 backend configuration
 ```
-
-**Why Not Workspaces?**
-
-Terraform workspaces are not used because:
-- Directory-based isolation is more explicit and easier to understand
-- Each environment can have different backend configurations
-- Clearer separation of concerns
-- Easier to implement different provider configurations per environment
-- Better alignment with future separate-accounts strategy
 
 ### Configuration Layers
 
-Configuration flows through four layers, with later layers overriding earlier ones:
+Configuration flows through three layers, with later layers overriding earlier ones:
 
 1. **Module Defaults** — Sensible baseline values defined in module `variables.tf`
-2. **Environment Variables** — Environment-specific overrides in `environments/{env}/variables.tf`
-3. **Variable Files** — Concrete values in `environments/{env}/terraform.tfvars`
-4. **Secrets Manager** — Sensitive values injected at runtime (never in Terraform state)
+2. **Variable Files** — Concrete values in `environments/default/terraform.tfvars`
+3. **Secrets Manager** — Sensitive values injected at runtime (never in Terraform state)
 
 **Example:**
 
@@ -239,34 +242,14 @@ variable "instance_cpu" {
   default = 256
 }
 
-# environments/staging/variables.tf (environment override)
-variable "instance_cpu" {
-  description = "CPU units for ECS tasks"
+variable "enabled" {
+  default = false
 }
 
-# environments/staging/terraform.tfvars (concrete value)
+# environments/default/terraform.tfvars (concrete value)
 instance_cpu = 256
-
-# environments/production/terraform.tfvars (concrete value)
-instance_cpu = 1024
+enabled      = false
 ```
-
-### Environment-Specific Configuration
-
-**Staging:**
-- Smaller instance sizes
-- Minimal scaling (1-2 tasks)
-- Relaxed resource limits
-- Test data and mock external services
-- Shorter retention periods for logs
-
-**Production:**
-- Production-grade instance sizes
-- Auto-scaling enabled
-- Strict resource limits
-- Real data and external services
-- Longer retention periods for logs
-- Multi-AZ deployment for critical services
 
 ---
 
@@ -292,7 +275,7 @@ AWS_ACCESS_KEY_ID=test
 AWS_SECRET_ACCESS_KEY=test
 ```
 
-### Staging and Production
+### Production Environment
 
 **Storage:** AWS Secrets Manager in `ap-southeast-1`
 
@@ -305,12 +288,11 @@ AWS_SECRET_ACCESS_KEY=test
 
 **Secrets Stored:**
 
-| Secret | Purpose | Environments |
-|--------|---------|--------------|
-| Cognito client secret | API authentication with Cognito | Staging, Production |
-| Database credentials | RDS connection | Staging, Production |
-| GitHub token | Repository creation and code commits | Staging, Production |
-| JWT signing secret | Token signing (if not using Cognito) | Staging, Production |
+| Secret | Purpose |
+|--------|---------|
+| Cognito client secret | API authentication with Cognito |
+| Database credentials | RDS connection |
+| GitHub token | Repository creation and code commits |
 
 **Access Pattern:**
 
@@ -329,7 +311,7 @@ Application reads environment variables
 ```hcl
 # Terraform creates the secret
 resource "aws_secretsmanager_secret" "cognito_client_secret" {
-  name = "fikri-idp/${var.environment}/cognito-client-secret"
+  name = "fikri-idp/cognito-client-secret"
 }
 
 # ECS task definition references it
@@ -351,7 +333,7 @@ resource "aws_ecs_task_definition" "api" {
 
 **Secret Rotation:**
 
-- **Initial approach:** Manual rotation by platform administrators
+- **Initial approach:** Manual rotation by platform administrator
 - **Process:**
   1. Generate new secret value
   2. Update Secrets Manager entry
@@ -390,35 +372,22 @@ resource "aws_ecs_task_definition" "api" {
 
 ### State Key Strategy
 
-Each environment has its own state file with a unique key prefix:
+A single state file manages the Production environment:
 
 ```
 s3://fikri-idp-terraform-state/
-├── staging/
-│   └── terraform.tfstate
-└── production/
+└── default/
     └── terraform.tfstate
 ```
 
-**Backend Configuration per Environment:**
+**Backend Configuration:**
 
 ```hcl
-# environments/staging/backend.tf
+# environments/default/backend.tf
 terraform {
   backend "s3" {
     bucket         = "fikri-idp-terraform-state"
-    key            = "staging/terraform.tfstate"
-    region         = "ap-southeast-1"
-    dynamodb_table = "fikri-idp-terraform-locks"
-    encrypt        = true
-  }
-}
-
-# environments/production/backend.tf
-terraform {
-  backend "s3" {
-    bucket         = "fikri-idp-terraform-state"
-    key            = "production/terraform.tfstate"
+    key            = "default/terraform.tfstate"
     region         = "ap-southeast-1"
     dynamodb_table = "fikri-idp-terraform-locks"
     encrypt        = true
@@ -439,17 +408,8 @@ terraform {
 **Do Not:**
 - Manually edit state files
 - Delete state files
-- Share state files between environments
 - Commit state files to version control
 - Store sensitive data in state (use Secrets Manager)
-
-### State Isolation
-
-Each environment's state is completely isolated:
-- Staging state cannot reference production resources
-- Production state cannot reference staging resources
-- State locking prevents concurrent modifications within an environment
-- Separate state files prevent accidental cross-environment changes
 
 ### Bootstrap Process
 
@@ -476,22 +436,56 @@ Before using Terraform, the S3 bucket and DynamoDB table must be created. This i
 - Compliance with data residency requirements
 
 **Scope:**
-- All environments use the same region initially
+- Single-region deployment only
 - Multi-region deployment is explicitly out of scope (see [Vision](../product/vision.md))
-- Future multi-region support would require significant architectural changes
 
 ---
 
-## Alignment with Other Documentation
+## Cost Summary
+
+| State | Monthly | Daily |
+|-------|---------|-------|
+| **Inactive** (everything off) | ~$19-22 | ~$0.65-0.73 |
+| **Active** (IDP platform running) | ~$45-55 | ~$1.50-1.83 |
+| **Per active golden-path service** | +$15-20 | +$0.50-0.67 |
+
+### Cost Breakdown (Inactive)
+
+| Service | Monthly Cost |
+|---------|-------------|
+| ALB (shared) | ~$16.50 |
+| Secrets Manager (3 secrets) | ~$1.20 |
+| ECR (container storage) | ~$0.10 |
+| CloudWatch (log groups) | ~$0.50 |
+| S3 (Terraform state) | ~$0.25 |
+| DynamoDB (state locking) | ~$0.10 |
+| Service Discovery (namespace) | ~$0.50 |
+| **Total** | **~$19.15** |
+
+### Cost Breakdown (Active — IDP Platform)
+
+| Service | Monthly Cost |
+|---------|-------------|
+| Inactive base | ~$19.15 |
+| ECS Fargate (Portal + API) | ~$17.00 |
+| RDS Serverless v2 (0-2 ACU) | ~$12.00 |
+| NAT Gateway | ~$32.00 |
+| **Total** | **~$80.15** |
+
+**Note:** NAT Gateway is the largest single cost driver at ~$32/month. If services do not need outbound internet access, this can be removed to save ~$32/month.
+
+---
+
+## Alignment with Existing Documentation
 
 | Document | Alignment |
 |----------|-----------|
-| [Vision](../product/vision.md) | Three environments (local, staging, production) are part of MVP scope |
+| [Vision](../product/vision.md) | Two environments (local, production) are part of MVP scope |
 | [Personas](../product/personas.md) | Developers deploy through environments; Platform Admins manage infrastructure |
-| [Golden Path](../platform/golden-path.md) | Golden path deploys to staging; production promotion is a separate workflow |
+| [Golden Path](../platform/golden-path.md) | Golden path deploys directly to production |
 | [Service Lifecycle](../platform/service-lifecycle.md) | Services progress through environments as part of lifecycle states |
 | [Architecture Overview](overview.md) | Environment strategy supports component architecture and boundaries |
-| [Technology Stack](technology-stack.md) | Terraform, AWS, and ECS Fargate choices support multi-environment deployment |
+| [Technology Stack](technology-stack.md) | Terraform, AWS, and ECS Fargate choices support environment deployment |
 | [Local Development](local-development.md) | Local environment details and Docker Compose setup |
 
 ---
@@ -499,7 +493,7 @@ Before using Terraform, the S3 bucket and DynamoDB table must be created. This i
 ## Next Steps
 
 1. **Create Terraform modules** — Implement reusable modules for VPC, ECS, ALB, RDS, Cognito, and service discovery
-2. **Create environment configurations** — Set up `environments/staging/` and `environments/production/` with backend configuration
+2. **Create environment configuration** — Set up `environments/default/` with backend configuration and `enabled` variable
 3. **Bootstrap state backend** — Create S3 bucket and DynamoDB table in `ap-southeast-1`
-4. **Implement CI/CD** — GitHub Actions workflows for `terraform plan` and `terraform apply` per environment
-5. **Define promotion workflow** — Document process for promoting services from staging to production
+4. **Implement CI/CD** — GitHub Actions workflows for `terraform plan` and `terraform apply`
+5. **Implement activation workflow** — Document process for enabling/disabling resources via Terraform variable

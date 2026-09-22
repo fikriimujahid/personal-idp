@@ -313,7 +313,7 @@ V1 delivers a working Internal Developer Platform that enables developers to cre
   - Push to Amazon ECR
   - Deploy to ECS Fargate
 - Security gates integrated into pipeline (see Feature 12)
-- Environment-specific deployment (staging, production)
+- Production deployment
 
 **Acceptance Criteria:**
 
@@ -360,7 +360,7 @@ Features deferred to future iterations. Prioritisation will be determined based 
 | Advanced deployment strategies | Canary, blue/green deployments | V1 ECS Deployment |
 | Database provisioning | Automated RDS / DynamoDB provisioning for services | V1 AWS Provisioning |
 | Additional templates | Worker services, static sites, CLI tools | V1 Service Templates |
-| Self-service environment provisioning | Developer-requested staging/preview environments | V1 Environments |
+| Self-service environment provisioning | Developer-requested preview environments | V1 Environments |
 | Backstage evaluation | Evaluate Backstage as portal replacement or integration | V1 Portal |
 | Feature flag management | Integration with LaunchDarkly, Unleash, or similar | V1 CI/CD |
 | Cost allocation and optimisation | Per-service cost tracking and budget alerts | V1 AWS Provisioning |

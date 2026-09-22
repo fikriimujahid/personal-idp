@@ -77,9 +77,8 @@ fikri-idp/
 │   │   ├── alb/
 │   │   ├── service-discovery/
 │   │   └── ecr/
-│   └── environments/            # Per-environment configuration
-│       ├── staging/
-│       └── production/
+│   └── environments/            # Terraform configuration
+│       └── default/
 │
 ├── docs/                        # Documentation
 │   ├── product/                 # Vision, personas
@@ -143,8 +142,7 @@ Platform-level Terraform configuration for AWS infrastructure.
 | Directory | Purpose |
 |-----------|---------|
 | `infrastructure/modules/` | Reusable Terraform modules (VPC, ECS, ALB, service discovery, ECR) |
-| `infrastructure/environments/staging/` | Staging environment Terraform configuration |
-| `infrastructure/environments/production/` | Production environment Terraform configuration |
+| `infrastructure/environments/default/` | Production Terraform configuration (inactive by default) |
 
 ---
 

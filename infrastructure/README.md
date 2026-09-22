@@ -9,7 +9,7 @@ Infrastructure code is **not** part of the pnpm workspace. It is managed indepen
 | Directory | Purpose |
 |-----------|---------|
 | `modules/` | Reusable Terraform modules (VPC, ECS, ALB, service discovery, ECR) |
-| `environments/` | Per-environment configuration (staging, production) |
+| `environments/` | Terraform configuration |
 
 ## Modules
 
@@ -25,14 +25,15 @@ Infrastructure code is **not** part of the pnpm workspace. It is managed indepen
 
 | Environment | Description |
 |-------------|-------------|
-| `staging/` | Staging environment configuration |
-| `production/` | Production environment configuration |
+| `default/` | Production environment configuration (inactive by default) |
 
 ## Usage
 
 ```bash
-cd infrastructure/environments/staging
+cd infrastructure/environments/default
 terraform init
 terraform plan
 terraform apply
 ```
+
+To activate compute resources, set `enabled = true` in `terraform.tfvars` before running `terraform apply`.

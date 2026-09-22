@@ -297,4 +297,4 @@ Security controls are embedded into the templates that generate service artifact
 | `service-lifecycle.md` | Security controls are validated during PROVISIONING and DEPLOYING states |
 | `overview.md` | Security baseline is a cross-cutting concern enforced across all components |
 | `technology-stack.md` | Security controls leverage existing stack: AWS Secrets Manager, CloudWatch, ECR scanning, IAM |
-| `environments.md` | Security baseline applies to staging and production; local development has relaxed controls |
+| `environments.md` | Security baseline applies to production; local development has relaxed controls |

@@ -27,7 +27,7 @@ The platform abstracts away infrastructure complexity, standardizes deployment p
 4. **Repository creation** — Repository is automatically created with correct structure, conventions, and configuration
 5. **Infrastructure provisioning** — ECS Fargate infrastructure is provisioned via reusable Terraform modules
 6. **CI/CD configuration** — GitHub Actions pipeline is automatically configured for lint, test, build, and deploy
-7. **Deployment** — Service is deployed through local → staging → production environments
+7. **Deployment** — Service is deployed through local → production environments
 8. **Service health** — CloudWatch logs, ECS task health, ALB health checks, and basic CPU/memory metrics are visible
 9. **Service ownership** — Ownership is recorded in a PostgreSQL-backed service catalog
 
@@ -116,8 +116,7 @@ V1 delivers a working Internal Developer Platform that enables developers to cre
 
 ### Environments
 - Local development
-- Staging
-- Production
+- Production (inactive by default)
 
 ### Documentation
 - Onboarding guide for developers
@@ -187,7 +186,7 @@ The following capabilities may be added in future iterations based on user feedb
 - Advanced deployment strategies (canary, blue/green)
 - Database provisioning for services (automated RDS / DynamoDB)
 - Additional service templates (worker services, static sites, CLI tools)
-- Self-service environment provisioning (developer-requested staging/preview environments)
+- Self-service environment provisioning (developer-requested preview environments)
 - Backstage evaluation (as portal replacement or integration)
 - Feature flag management (LaunchDarkly, Unleash, or similar)
 - Cost allocation and optimisation (per-service cost tracking, budget alerts)

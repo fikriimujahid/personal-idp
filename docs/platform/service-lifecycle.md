@@ -173,7 +173,7 @@ Created:         2026-09-25
 Last Deployment: 2026-09-27
 Owner:           Exam Team
 Repository:      https://github.com/fikri/online-exam-api
-Service URL:     https://staging.online-exam-api.fikri.dev
+Service URL:     https://online-exam-api.fikri.dev
 ```
 
 ### Example: Failed Service

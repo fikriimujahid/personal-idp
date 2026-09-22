@@ -6,9 +6,9 @@ The golden path defines the standard workflow for creating a new backend service
 
 **Target Persona:** Developer
 
-**Success Criteria:** A fully deployed, monitored, and catalogued service in staging within 30 minutes of initiation, with zero platform team intervention.
+**Success Criteria:** A fully deployed, monitored, and catalogued service in production within 30 minutes of initiation, with zero platform team intervention.
 
-**Scope:** Service creation through staging deployment. Production promotion is a separate workflow.
+**Scope:** Service creation through production deployment.
 
 ---
 
@@ -204,7 +204,7 @@ The IDP generates GitHub Actions workflow files for lint, test, build, push to E
 
 | | |
 |---|---|
-| **Input** | Service metadata, environment configuration (staging) |
+| **Input** | Service metadata, environment configuration |
 | **Output** | `.github/workflows/` directory with CI/CD pipeline committed to repository, including security gates |
 | **Failure** | Git push failure, workflow template rendering error |
 | **Retry** | Automatic retry (3 attempts); idempotent |
@@ -258,12 +258,12 @@ The IDP executes Terraform to provision all required AWS resources.
 
 ### Step 12: Deploy ECS Service
 
-The IDP triggers the CI/CD pipeline to build the Docker image, push to ECR, and deploy to ECS Fargate in staging.
+The IDP triggers the CI/CD pipeline to build the Docker image, push to ECR, and deploy to ECS Fargate in production.
 
 | | |
 |---|---|
 | **Input** | GitHub repository with application code and Dockerfile, ECR repository URL, ECS cluster and service name |
-| **Output** | Docker image built and pushed to ECR; ECS service updated with new task definition revision; tasks running in staging |
+| **Output** | Docker image built and pushed to ECR; ECS service updated with new task definition revision; tasks running in production |
 | **Failure** | Docker build failure, ECR push failure, ECS deployment timeout, health check failure in ECS |
 | **Retry** | CI/CD pipeline retries automatically (3 attempts); ECS rolls back to previous task definition if deployment fails |
 | **Manual Intervention** | Developer if application code fails to build or start; Platform Administrator if ECS cluster capacity is insufficient |
@@ -300,7 +300,7 @@ The IDP creates a markdown entry in the service catalog with service metadata.
 - Service name
 - Owner
 - Repository URL
-- Service URL (staging)
+- Service URL
 - Status (active)
 - SLI/SLO definitions (request latency p50/p95/p99, error rate, availability)
 
@@ -361,8 +361,8 @@ The service is fully deployed, monitored, and catalogued. The developer is notif
 4. **Clicks "Create"** — from this point, the workflow is fully automated.
 5. **Watches progress** as the IDP displays a step-by-step progress indicator.
 6. **Receives notification** (within 15-30 minutes) that the service is available, with:
-   - Service URL (staging)
-   - GitHub repository URL
+   - Service URL
+    - GitHub repository URL
    - Grafana dashboard URL
    - Service catalog entry link
 7. **Clones the repository** and begins developing business logic.
@@ -380,7 +380,6 @@ The developer does not need to:
 
 The following are not part of this golden path:
 
-- **Production promotion** — separate workflow triggered by the developer after staging validation
 - **Additional templates** — React admin frontend, worker services (future)
 - **Custom infrastructure patterns** — only standard patterns via templates
 - **Database provisioning** — no database setup in the initial golden path

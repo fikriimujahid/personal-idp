@@ -10,6 +10,7 @@ Before acting on any prompt or request, always read the following product docume
 
 1. `docs/product/vision.md` — Platform purpose, MVP scope, target users, and success criteria
 2. `docs/product/personas.md` — User types, responsibilities, permissions, and relationships
+3. `docs/platform/golden-path.md` — Standard workflow for creating a new backend service through the IDP
 
 All work must align with the platform's purpose, MVP scope, target users, and success criteria defined in those documents. If a request conflicts with the vision or personas, raise it before proceeding.
 
